@@ -26,7 +26,7 @@ public class User
 
     [Column("currency")]
     [StringLength(10)]
-    public string Currency { get; set; } = "USD";
+    public string Currency { get; set; } = "INR";
 
     [Column("salary")]
     public decimal? Salary { get; set; }

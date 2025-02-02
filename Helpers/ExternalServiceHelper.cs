@@ -78,9 +78,33 @@ namespace SpendWise.Helpers
         private async Task<(string, string, object)> HandleUserProfileCreation(Dictionary<string, object> data, string userId)
         {
             var user = await _userService.GetUserDetailsAsync(userId);
-            user.Salary = Convert.ToDecimal(data["salary"]);
-            user.LocationType = data["location_type"].ToString();
-            user.Currency = data["currency"].ToString();
+
+            if (data.TryGetValue("salary", out var salaryValue) && decimal.TryParse(salaryValue.ToString(), out var salary))
+            {
+                user.Salary = salary;
+            }
+            else
+            {
+                return ("Invalid salary value.", "error", null);
+            }
+
+            if (data.TryGetValue("location_type", out var locationTypeValue))
+            {
+                user.LocationType = locationTypeValue.ToString();
+            }
+            else
+            {
+                return ("Invalid location type value.", "error", null);
+            }
+
+            if (data.TryGetValue("currency", out var currencyValue))
+            {
+                user.Currency = currencyValue.ToString();
+            }
+            else
+            {
+                return ("Invalid currency value.", "error", null);
+            }
 
             await _userService.UpdateUserAsync(user);
             return ("Profile updated successfully!", "profile_updated", user);
@@ -88,33 +112,68 @@ namespace SpendWise.Helpers
 
         private async Task<(string, string, object)> HandleExpenseLogging(Dictionary<string, object> data, string userId)
         {
+            if (!data.TryGetValue("amount", out var amountValue) || !decimal.TryParse(amountValue.ToString(), out var amount))
+            {
+                return ("Invalid amount value.", "error", null);
+            }
+
+            if (!data.TryGetValue("category_id", out var categoryIdValue) || !int.TryParse(categoryIdValue.ToString(), out var categoryId))
+            {
+                return ("Invalid category ID value.", "error", null);
+            }
+
+            if (!data.TryGetValue("expense_date", out var expenseDateValue) || !DateOnly.TryParse(expenseDateValue.ToString(), out var expenseDate))
+            {
+                return ("Invalid expense date value.", "error", null);
+            }
+
             var expense = new Expense
             {
                 UserId = userId,
-                Amount = Convert.ToDecimal(data["amount"]),
-                CategoryId = Convert.ToInt32(data["category_id"]),
+                Amount = amount,
+                CategoryId = categoryId,
                 Description = data.TryGetValue("description", out var desc) ? desc.ToString() : null,
-                ExpenseDate = DateOnly.Parse(data["expense_date"].ToString()),
+                ExpenseDate = expenseDate,
                 CreatedAt = DateTime.UtcNow
             };
 
             await _expenseService.AddExpenseAsync(expense);
 
-            var budgetStatus = await _budgetService.CheckBudgetStatus(userId, expense.CategoryId);
-            var message = $"Expense logged. {budgetStatus}";
+            //var budgetStatus = await _budgetService.CheckBudgetStatus(userId, expense.CategoryId);
+            var message = $"Expense logged.";
 
             return (message, "expense_logged", expense);
         }
 
         private async Task<(string, string, object)> HandleBudgetCreation(Dictionary<string, object> data, string userId)
         {
+            if (!data.TryGetValue("category_id", out var categoryIdValue) || !int.TryParse(categoryIdValue.ToString(), out var categoryId))
+            {
+                return ("Invalid category ID value.", "error", null);
+            }
+
+            if (!data.TryGetValue("amount", out var amountValue) || !decimal.TryParse(amountValue.ToString(), out var amount))
+            {
+                return ("Invalid amount value.", "error", null);
+            }
+
+            if (!data.TryGetValue("start_date", out var startDateValue) || !DateOnly.TryParse(startDateValue.ToString(), out var startDate))
+            {
+                return ("Invalid start date value.", "error", null);
+            }
+
+            if (!data.TryGetValue("end_date", out var endDateValue) || !DateOnly.TryParse(endDateValue.ToString(), out var endDate))
+            {
+                return ("Invalid end date value.", "error", null);
+            }
+
             var budget = new Budget
             {
                 UserId = userId,
-                CategoryId = Convert.ToInt32(data["category_id"]),
-                Amount = Convert.ToDecimal(data["amount"]),
-                StartDate = DateOnly.Parse(data["start_date"].ToString()),
-                EndDate = DateOnly.Parse(data["end_date"].ToString())
+                CategoryId = categoryId,
+                Amount = amount,
+                StartDate = startDate,
+                EndDate = endDate
             };
 
             await _budgetService.CreateOrUpdateBudgetAsync(budget);
@@ -123,13 +182,28 @@ namespace SpendWise.Helpers
 
         private async Task<(string, string, object)> HandleGoalSetting(Dictionary<string, object> data, string userId)
         {
+            if (!data.TryGetValue("goal_name", out var goalNameValue) || string.IsNullOrEmpty(goalNameValue.ToString()))
+            {
+                return ("Invalid goal name value.", "error", null);
+            }
+
+            if (!data.TryGetValue("target_amount", out var targetAmountValue) || !decimal.TryParse(targetAmountValue.ToString(), out var targetAmount))
+            {
+                return ("Invalid target amount value.", "error", null);
+            }
+
+            if (!data.TryGetValue("target_date", out var targetDateValue) || !DateOnly.TryParse(targetDateValue.ToString(), out var targetDate))
+            {
+                return ("Invalid target date value.", "error", null);
+            }
+
             var goal = new Goal
             {
                 UserId = userId,
-                Name = data["goal_name"].ToString(),
-                TargetAmount = Convert.ToDecimal(data["target_amount"]),
+                Name = goalNameValue.ToString(),
+                TargetAmount = targetAmount,
                 StartDate = DateOnly.FromDateTime(DateTime.Now),
-                EndDate = DateOnly.Parse(data["target_date"].ToString())
+                EndDate = targetDate
             };
 
             await _goalService.AddGoalAsync(goal);
@@ -138,14 +212,34 @@ namespace SpendWise.Helpers
 
         private async Task<(string, string, object)> HandleRecurringExpense(Dictionary<string, object> data, string userId)
         {
+            if (!data.TryGetValue("amount", out var amountValue) || !decimal.TryParse(amountValue.ToString(), out var amount))
+            {
+                return ("Invalid amount value.", "error", null);
+            }
+
+            if (!data.TryGetValue("category_id", out var categoryIdValue) || !int.TryParse(categoryIdValue.ToString(), out var categoryId))
+            {
+                return ("Invalid category ID value.", "error", null);
+            }
+
+            if (!data.TryGetValue("next_due_date", out var nextDueDateValue) || !DateOnly.TryParse(nextDueDateValue.ToString(), out var nextDueDate))
+            {
+                return ("Invalid next due date value.", "error", null);
+            }
+
+            if (!data.TryGetValue("frequency", out var frequencyValue) || string.IsNullOrEmpty(frequencyValue.ToString()))
+            {
+                return ("Invalid frequency value.", "error", null);
+            }
+
             var recurringExpense = new RecurringExpense
             {
                 UserId = userId,
-                Amount = Convert.ToDecimal(data["amount"]),
-                CategoryId = Convert.ToInt32(data["category_id"]),
+                Amount = amount,
+                CategoryId = categoryId,
                 Description = data.TryGetValue("description", out var desc) ? desc.ToString() : null,
-                NextDueDate = DateOnly.Parse(data["next_due_date"].ToString()),
-                Frequency = data["frequency"].ToString()
+                NextDueDate = nextDueDate,
+                Frequency = frequencyValue.ToString()
             };
 
             await _expenseService.AddRecurringExpenseAsync(recurringExpense);
@@ -154,11 +248,19 @@ namespace SpendWise.Helpers
 
         private async Task<(string, string, object)> HandleExpenseSummary(Dictionary<string, object> data, string userId)
         {
-            var startDate = DateOnly.Parse(data["start_date"].ToString());
-            var endDate = DateOnly.Parse(data["end_date"].ToString());
+            if (!data.TryGetValue("start_date", out var startDateValue) || !DateOnly.TryParse(startDateValue.ToString(), out var startDate))
+            {
+                return ("Invalid start date value.", "error", null);
+            }
+
+            if (!data.TryGetValue("end_date", out var endDateValue) || !DateOnly.TryParse(endDateValue.ToString(), out var endDate))
+            {
+                return ("Invalid end date value.", "error", null);
+            }
+
             var categoryIds = data.TryGetValue("category_ids", out var catIds) ?
                 JsonSerializer.Deserialize<List<int>>(catIds.ToString()) : new List<int>();
-            var includeAll = Convert.ToBoolean(data["include_all_categories"]);
+            var includeAll = data.TryGetValue("include_all_categories", out var includeAllValue) && bool.TryParse(includeAllValue.ToString(), out var includeAllBool) && includeAllBool;
 
             var summary = await _expenseService.GetExpenseSummaryAsync(userId, startDate.ToDateTime(TimeOnly.MinValue), endDate.ToDateTime(TimeOnly.MinValue), categoryIds, includeAll);
             return ($"Expense summary generated.", "expense_summary", summary);
@@ -177,30 +279,6 @@ public async Task<string> IndentHandlingAsync(string response)
             -If the message is a service - related query or anything else: { "response": "SERVICE"}
             """;
             return await _openAIService.HandleUserQuery(response, sysMessage);
-        }
-
-        public async Task<string> RefineSearchResultsAsync(string originalQuery, List<string> searchResults)
-        {
-            string sysMessage = """
-            You are Botangelos, a highly intelligent business assistant representing a leading AI and automation company. Your role is to refine and interpret search results retrieved from Azure Search to provide clear, concise, and actionable responses to the user according to the original query provided by the user. Always maintain a professional, client-focused tone and align with Botangelos's innovative ethos.Only include detail which is related to the original query.
-
-            When processing search results:
-            1. Prioritize clarity and relevance, summarizing the most important points from FAQs and company overviews according to the original query.
-            2. Use structured formatting with bullet points, headings, and subheadings.
-            3. Engage the user by relating responses to their potential business needs, emphasizing the value and expertise of Botangelos.
-
-            Handle the following types of input:
-            - **FAQs**: Provide direct answers or related insights based on frequently asked questions.
-            - **User Engagement**: Suggest follow-up actions such as contacting the company, scheduling a consultation, or exploring specific services further.
-
-            For any queries outside the scope of retrieved information, respond:
-            "I couldn't find specific information related to your query. For further assistance, you can contact us at info@botangelos.com or schedule a consultation."
-            
-            """;
-
-            var searchResultsString = string.Join("\n", searchResults);
-            var response = await _openAIService.HandleUserQuery($"Original query: {originalQuery}\nSearch results: {searchResultsString}", sysMessage);
-            return response;
         }
     }
 }

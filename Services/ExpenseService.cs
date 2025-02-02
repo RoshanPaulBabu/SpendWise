@@ -38,11 +38,13 @@ namespace SpendWise.Services
 
         public async Task<List<Expense>> GetExpenseSummaryAsync(string userId, DateTime startDate, DateTime endDate, List<int> categoryIds, bool includeAll)
         {
-            var query = _context.Expenses.Where(e => e.UserId == userId && e.ExpenseDate.ToDateTime(TimeOnly.MinValue) >= startDate && e.ExpenseDate.ToDateTime(TimeOnly.MinValue) <= endDate);
+            var query = _context.Expenses
+                .Include(e => e.Category)
+                .Where(e => e.UserId == userId && e.ExpenseDate.ToDateTime(TimeOnly.MinValue) >= startDate && e.ExpenseDate.ToDateTime(TimeOnly.MinValue) <= endDate);
 
             if (!includeAll)
             {
-                query = query.Where(e => categoryIds.Contains(e.CategoryId));
+                query = query.Where(e => categoryIds.Contains(e.Category.CategoryId));
             }
 
             return await query.ToListAsync();

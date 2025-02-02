@@ -101,14 +101,149 @@ namespace SpendWise.Dialogs
 
             var (response, functionName, functionParams) = await _externalServiceHelper.HandleUserQueryAsync(inputToAIService, userProfile.ChatHistory, stepContext.Context);
 
-            if (functionName == "refine_query")
+            // If functionName is "get_expense_summary", render an Adaptive Card
+            if (functionName == "expense_summary")
             {
+                var summaryItems = functionParams as List<Expense>;
+                var adaptiveCardJson = GenerateExpenseSummaryCard(summaryItems);
+                var adaptiveCardAttachment = new Attachment
+                {
+                    ContentType = "application/vnd.microsoft.card.adaptive",
+                    Content = JsonConvert.DeserializeObject(adaptiveCardJson)
+                };
+                await stepContext.Context.SendActivityAsync(MessageFactory.Attachment(adaptiveCardAttachment), cancellationToken);
+                return await stepContext.EndDialogAsync(null, cancellationToken);
+            }
+            else if (!string.IsNullOrEmpty(functionName))
+            {
+                // For all other cases, send a text response
                 await stepContext.Context.SendActivityAsync(MessageFactory.Text(response), cancellationToken);
                 return await stepContext.EndDialogAsync(null, cancellationToken);
             }
 
             return await stepContext.ReplaceDialogAsync(InitialDialogId, response, cancellationToken);
         }
+
+        // Update the GenerateExpenseSummaryCard method to accept List<Expense>
+        private string GenerateExpenseSummaryCard(List<Expense> summaryItems)
+        {
+            return $@"
+            {{
+                ""$schema"": ""http://adaptivecards.io/schemas/adaptive-card.json"",
+                ""type"": ""AdaptiveCard"",
+                ""version"": ""1.3"",
+                ""body"": [
+                    {{
+                        ""type"": ""TextBlock"",
+                        ""text"": ""Expense Summary"",
+                        ""weight"": ""Bolder"",
+                        ""size"": ""Medium""
+                    }},
+                    {{
+                        ""type"": ""ColumnSet"",
+                        ""columns"": [
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""Description"",
+                                        ""weight"": ""Bolder""
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""Amount"",
+                                        ""weight"": ""Bolder""
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""Date"",
+                                        ""weight"": ""Bolder""
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""Category"",
+                                        ""weight"": ""Bolder""
+                                    }}
+                                ]
+                            }}
+                        ]
+                    }},
+                    {string.Join(",", summaryItems.Select(item => $@"
+                    {{
+                        ""type"": ""ColumnSet"",
+                        ""columns"": [
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""{item.Description}"",
+                                        ""wrap"": true
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""{item.Amount:C}"",
+                                        ""wrap"": true
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""{item.ExpenseDate:MM/dd/yyyy}"",
+                                        ""wrap"": true
+                                    }}
+                                ]
+                            }},
+                            {{
+                                ""type"": ""Column"",
+                                ""width"": ""stretch"",
+                                ""items"": [
+                                    {{
+                                        ""type"": ""TextBlock"",
+                                        ""text"": ""{item.Category.Name}"",
+                                        ""wrap"": true
+                                    }}
+                                ]
+                            }}
+                        ]
+                    }}"))}
+                ]
+            }}";
+        }
+
+
+
 
     }
 

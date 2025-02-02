@@ -56,8 +56,8 @@ namespace SpendWise
 
 
             // Register dialogs
-            services.AddSingleton<MainDialog>();
-            services.AddSingleton<ParameterCollectionDialog>();
+            services.AddScoped<MainDialog>();
+            services.AddScoped<ParameterCollectionDialog>();
 
 
 
@@ -88,9 +88,10 @@ namespace SpendWise
             services.AddTransient<IBot, DialogAndWelcomeBot<MainDialog>>();
 
             // Register services
-            services.AddSingleton<AzureOpenAIService>();
+            services.AddScoped<AzureOpenAIService>();
 
-            services.AddSingleton<ExternalServiceHelper>();
+
+            services.AddScoped<ExternalServiceHelper>();
 
 
             services.AddSingleton<AdaptiveCardHelper>();

@@ -18,13 +18,17 @@ namespace SpendWise.Services
         private readonly ILogger<AzureOpenAIService> _logger;
         private readonly IUserDataService _userDataService;
         private readonly ICategoryService _categoryService;
+        private readonly IBudgetService _budgetService;
+        private readonly IGoalService _goalService;
 
-        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, IUserDataService userDataService, ICategoryService categoryService)
+        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, IUserDataService userDataService, ICategoryService categoryService, IBudgetService budgetService, IGoalService goalService)
         {
             _configuration = configuration;
             _logger = logger;
             _userDataService = userDataService;
             _categoryService = categoryService;
+            _budgetService = budgetService;
+            _goalService = goalService;
 
         }
 
@@ -268,7 +272,7 @@ namespace SpendWise.Services
                 {
                     foreach (var toolCall in completion.ToolCalls)
                     {
-                        var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, string>>();
+                        var inputData = toolCall.FunctionArguments.ToObjectFromJson<Dictionary<string, object>>();
 
                         return (inputData, toolCall.FunctionName, null);
                     }
@@ -296,7 +300,7 @@ namespace SpendWise.Services
                 Financial Management Guidelines:
                 1. Always convert amounts to user's currency ({user?.Currency ?? "USD"})
                 2. Validate expense dates against recurring payments
-                3. Check budget limits before confirming expenses
+                3. Check budget limits before confirming expenses, if budgets are not set leave it , dont ask the user to set it
                 4. Suggest realistic savings goals based on income
                 5. Available Categories: {categoriesString}
 
@@ -343,13 +347,16 @@ namespace SpendWise.Services
             if (user == null)
                 return baseMessage + "\nUSER PROFILE MISSING - COLLECT USING create_user_profile FUNCTION";
 
+            var userBudgets = await _budgetService.GetBudgetsAsStringAsync(user.UserId);
+            var userGoals = await _goalService.GetActiveGoalsAsStringAsync(user.UserId);
+
             return $@"{baseMessage}
                 User Profile:
                 - Salary: {user.Salary?.ToString("C") ?? "Not set"}
                 - Location: {user.LocationType ?? "Not set"}
                 - Currency: {user.Currency}
-                - Budgets: {(user.Budgets.Any() ? string.Join(", ", user.Budgets.Select(b => $"{b.Category.Name}: {b.Amount}")) : "None")}
-                -Active user goals: {user.Goals.Count(g => g.EndDate.HasValue && g.EndDate.Value.ToDateTime(TimeOnly.MinValue) > DateTime.Now)}";
+                - Budgets: {userBudgets}
+                -Active user goals: {userGoals}";
         }
 
         public async Task<string> HandleUserQuery(string userquery, string sysMessage)

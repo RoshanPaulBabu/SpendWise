@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using SpendWise.Data;
 using System.Linq;
+using System;
+using Microsoft.Extensions.Logging;
 
 namespace SpendWise.Services
 {
@@ -10,15 +12,19 @@ namespace SpendWise.Services
     {
         Task<bool> CheckBudgetStatus(string userId, int categoryId);
         Task CreateOrUpdateBudgetAsync(Budget budget);
+
+        Task<string> GetBudgetsAsStringAsync(string userId);
     }
 
     public class BudgetService : IBudgetService
     {
         private readonly SpendWiseContext _context;
+        private readonly ILogger<BudgetService> _logger;
 
-        public BudgetService(SpendWiseContext context)
+        public BudgetService(SpendWiseContext context, ILogger<BudgetService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<bool> CheckBudgetStatus(string userId, int categoryId)
@@ -53,5 +59,44 @@ namespace SpendWise.Services
 
             await _context.SaveChangesAsync();
         }
+        public async Task<string> GetBudgetsAsStringAsync(string userId)
+        {
+            try
+            {
+                // Ensure userId is not null or empty
+                if (string.IsNullOrEmpty(userId))
+                {
+                    throw new ArgumentException("User ID cannot be null or empty.", nameof(userId));
+                }
+
+                // Fetch active budgets from the database
+                var budgets = await _context.Budgets
+                    .Where(b => b.UserId == userId && b.EndDate >= DateOnly.FromDateTime(DateTime.Now))
+                    .Include(b => b.Category)
+                    .ToListAsync();
+
+                if (budgets == null || budgets.Count == 0)
+                {
+                    return "No active budgets set.";
+                }
+
+                // Build the budgets string
+                var budgetStrings = budgets.Select(b =>
+                    $"{b.Category.Name}: {b.Amount.ToString("C")} from {b.StartDate:yyyy-MM-dd} to {b.EndDate:yyyy-MM-dd}"
+                );
+
+                return string.Join(", ", budgetStrings);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception details
+                _logger.LogError(ex, $"Error in GetBudgetsAsStringAsync for User ID: {userId}");
+
+                // Optionally, rethrow the exception or return a default value
+                // throw;
+                return null;
+            }
+        }
+
     }
 }
