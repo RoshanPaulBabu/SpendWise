@@ -1,0 +1,55 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "Image",
+            "url": "https://i.postimg.cc/7YV5Yr6Z/Botangelos-black.png",
+            "size": "Stretch",
+            "altText": "IT Support Bot"
+        },
+        {
+            "type": "TextBlock",
+            "spacing": "Medium",
+            "size": "Default",
+            "weight": "Bolder",
+            "text": "Is there anything else I can assist you with?",
+            "wrap": true,
+            "maxLines": 0
+        },
+        {
+            "type": "ActionSet",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": "Tell me about Botangelos",
+                    "data": {
+                        "action": "about_botangelos"
+                    }
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Explore Services",
+                    "data": {
+                        "action": "explore_services"
+                    }
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Schedule a Consultation",
+                    "data": {
+                        "action": "schedule_consultation"
+                    }
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Contact Support",
+                    "data": {
+                        "action": "contact_support"
+                    }
+                }
+            ]
+        }
+    ]
+}
