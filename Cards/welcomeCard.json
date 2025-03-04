@@ -4,25 +4,25 @@
     "body": [
         {
             "type": "TextBlock",
-            "text": "Welcome to Botangelos!",
+            "text": "Welcome to SpendWise!",
             "weight": "Bolder",
             "size": "Large",
             "horizontalAlignment": "Center"
         },
         {
             "type": "TextBlock",
-            "text": "We craft intelligent solutions that redefine possibilities. 😊",
+            "text": "Your personal assistant for managing expenses efficiently. 💰",
             "wrap": true,
             "size": "Medium",
             "horizontalAlignment": "Center",
             "spacing": "Small"
         },
-        {
-            "type": "Image",
-            "url": "https://cdn.dribbble.com/users/344048/screenshots/4134234/bot_icon_dribbble_1x.jpg",
-            "altText": "Botangelos Banner",
-            "horizontalAlignment": "Center"
-        },
+      {
+        "type": "Image",
+        "url": "https://miro.medium.com/v2/resize:fit:680/1*yg1NTxBJEnfvMDIrJ6m7Yg.png",
+        "altText": "SpendWise Banner",
+        "horizontalAlignment": "Center"
+      },
         {
             "type": "TextBlock",
             "text": "How can I assist you today?",
@@ -35,35 +35,34 @@
             "actions": [
                 {
                     "type": "Action.Submit",
-                    "title": "Tell me about Botangelos",
+                    "title": "Set Expenses",
+                  "data": {
+                    "action": "set_expenses"
+                  }
+                },
+              {
+                "type": "Action.Submit",
+                "title": "Track Expenses",
+                "data": {
+                  "action": "get_expenses_of_last_5_months_till_current_date"
+                }
+              },
+                {
+                    "type": "Action.Submit",
+                    "title": "Set Budget",
                     "data": {
-                        "action": "about_botangelos"
+                        "action": "set_budget"
                     }
                 },
                 {
                     "type": "Action.Submit",
-                    "title": "Explore Services",
+                    "title": "Get Tips",
                     "data": {
-                        "action": "explore_services"
-                    }
-                },
-                {
-                    "type": "Action.Submit",
-                    "title": "Schedule a Consultation",
-                    "data": {
-                        "action": "schedule_consultation"
-                    }
-                },
-                {
-                    "type": "Action.Submit",
-                    "title": "Contact Support",
-                    "data": {
-                        "action": "contact_support"
+                        "action": "get_insights_and_how_should_i_improve_according_to_my_financial_datas"
                     }
                 }
             ]
         }
     ],
-
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json"
 }

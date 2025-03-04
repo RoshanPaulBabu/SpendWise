@@ -209,7 +209,7 @@ namespace SpendWise.Dialogs
                                 ""items"": [
                                     {{
                                         ""type"": ""TextBlock"",
-                                        ""text"": ""{item.Amount:C}"",
+                                        ""text"": ""₹{item.Amount}"",
                                         ""wrap"": true
                                     }}
                                 ]

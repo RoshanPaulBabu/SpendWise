@@ -147,37 +147,53 @@ namespace SpendWise.Helpers
 
         private async Task<(string, string, object)> HandleBudgetCreation(Dictionary<string, object> data, string userId)
         {
-            if (!data.TryGetValue("category_id", out var categoryIdValue) || !int.TryParse(categoryIdValue.ToString(), out var categoryId))
+            if (!data.TryGetValue("budgets", out var budgetsValue) || !(budgetsValue is JsonElement budgetsElement) || budgetsElement.ValueKind != JsonValueKind.Array)
             {
-                return ("Invalid category ID value.", "error", null);
+                return ("Invalid budgets data.", "error", null);
             }
 
-            if (!data.TryGetValue("amount", out var amountValue) || !decimal.TryParse(amountValue.ToString(), out var amount))
+            var budgets = new List<Budget>();
+
+            foreach (var budgetElement in budgetsElement.EnumerateArray())
             {
-                return ("Invalid amount value.", "error", null);
+                if (!budgetElement.TryGetProperty("category_id", out var categoryIdValue) || !int.TryParse(categoryIdValue.ToString(), out var categoryId))
+                {
+                    return ("Invalid category ID value.", "error", null);
+                }
+
+                if (!budgetElement.TryGetProperty("amount", out var amountValue) || !decimal.TryParse(amountValue.ToString(), out var amount))
+                {
+                    return ("Invalid amount value.", "error", null);
+                }
+
+                if (!budgetElement.TryGetProperty("start_date", out var startDateValue) || !DateOnly.TryParse(startDateValue.ToString(), out var startDate))
+                {
+                    return ("Invalid start date value.", "error", null);
+                }
+
+                if (!budgetElement.TryGetProperty("end_date", out var endDateValue) || !DateOnly.TryParse(endDateValue.ToString(), out var endDate))
+                {
+                    return ("Invalid end date value.", "error", null);
+                }
+
+                var budget = new Budget
+                {
+                    UserId = userId,
+                    CategoryId = categoryId,
+                    Amount = amount,
+                    StartDate = startDate,
+                    EndDate = endDate
+                };
+
+                budgets.Add(budget);
             }
 
-            if (!data.TryGetValue("start_date", out var startDateValue) || !DateOnly.TryParse(startDateValue.ToString(), out var startDate))
+            foreach (var budget in budgets)
             {
-                return ("Invalid start date value.", "error", null);
+                await _budgetService.CreateOrUpdateBudgetAsync(budget);
             }
 
-            if (!data.TryGetValue("end_date", out var endDateValue) || !DateOnly.TryParse(endDateValue.ToString(), out var endDate))
-            {
-                return ("Invalid end date value.", "error", null);
-            }
-
-            var budget = new Budget
-            {
-                UserId = userId,
-                CategoryId = categoryId,
-                Amount = amount,
-                StartDate = startDate,
-                EndDate = endDate
-            };
-
-            await _budgetService.CreateOrUpdateBudgetAsync(budget);
-            return ("Budget updated successfully!", "budget_updated", budget);
+            return ("Budgets updated successfully!", "budgets_updated", budgets);
         }
 
         private async Task<(string, string, object)> HandleGoalSetting(Dictionary<string, object> data, string userId)
@@ -262,7 +278,21 @@ namespace SpendWise.Helpers
                 JsonSerializer.Deserialize<List<int>>(catIds.ToString()) : new List<int>();
             var includeAll = data.TryGetValue("include_all_categories", out var includeAllValue) && bool.TryParse(includeAllValue.ToString(), out var includeAllBool) && includeAllBool;
 
-            var summary = await _expenseService.GetExpenseSummaryAsync(userId, startDate.ToDateTime(TimeOnly.MinValue), endDate.ToDateTime(TimeOnly.MinValue), categoryIds, includeAll);
+            List<Expense> summary = new List<Expense>();
+
+            if (categoryIds.Count > 0)
+            {
+                foreach (var categoryId in categoryIds)
+                {
+                    var categorySummary = await _expenseService.GetExpenseSummaryAsync(userId, startDate.ToDateTime(TimeOnly.MinValue), endDate.ToDateTime(TimeOnly.MinValue), categoryId , includeAll);
+                    summary.AddRange(categorySummary);
+                }
+            }
+            else
+            {
+                summary = await _expenseService.GetExpenseSummaryAsync(userId, startDate.ToDateTime(TimeOnly.MinValue), endDate.ToDateTime(TimeOnly.MinValue), 0, includeAll);
+            }
+
             return ($"Expense summary generated.", "expense_summary", summary);
         }
 

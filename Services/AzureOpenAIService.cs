@@ -20,8 +20,9 @@ namespace SpendWise.Services
         private readonly ICategoryService _categoryService;
         private readonly IBudgetService _budgetService;
         private readonly IGoalService _goalService;
+        private readonly IExpenseService _expenseService;
 
-        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, IUserDataService userDataService, ICategoryService categoryService, IBudgetService budgetService, IGoalService goalService)
+        public AzureOpenAIService(IConfiguration configuration, ILogger<AzureOpenAIService> logger, IUserDataService userDataService, ICategoryService categoryService, IBudgetService budgetService, IGoalService goalService, IExpenseService expenseService)
         {
             _configuration = configuration;
             _logger = logger;
@@ -29,6 +30,7 @@ namespace SpendWise.Services
             _categoryService = categoryService;
             _budgetService = budgetService;
             _goalService = goalService;
+            _expenseService = expenseService;
 
         }
 
@@ -91,32 +93,42 @@ namespace SpendWise.Services
                     ""required"": [""amount"", ""category_id"", ""expense_date""]
                 }";
 
-                string jsonSchemaCreateBudget = @"
+                string jsonSchemaCreateBudgets = @"
                 {
                     ""type"": ""object"",
                     ""properties"": {
-                        ""category_id"": { 
-                            ""type"": ""integer"", 
-                            ""description"": ""Category ID for budget allocation""
-                        },
-                        ""amount"": { 
-                            ""type"": ""number"", 
-                            ""minimum"": 0.01,
-                            ""description"": ""Monthly budget amount in user's currency""
-                        },
-                        ""start_date"": { 
-                            ""type"": ""string"", 
-                            ""format"": ""date"",
-                            ""description"": ""Budget cycle start date (YYYY-MM-DD)""
-                        },
-                        ""end_date"": { 
-                            ""type"": ""string"", 
-                            ""format"": ""date"",
-                            ""description"": ""Budget cycle end date (YYYY-MM-DD)""
+                        ""budgets"": {
+                            ""type"": ""array"",
+                            ""items"": {
+                                ""type"": ""object"",
+                                ""properties"": {
+                                    ""category_id"": { 
+                                        ""type"": ""integer"", 
+                                        ""description"": ""Category ID for budget allocation""
+                                    },
+                                    ""amount"": { 
+                                        ""type"": ""number"", 
+                                        ""minimum"": 0.01,
+                                        ""description"": ""Monthly budget amount in user's currency""
+                                    },
+                                    ""start_date"": { 
+                                        ""type"": ""string"", 
+                                        ""format"": ""date"",
+                                        ""description"": ""Budget cycle start date (YYYY-MM-DD)""
+                                    },
+                                    ""end_date"": { 
+                                        ""type"": ""string"", 
+                                        ""format"": ""date"",
+                                        ""description"": ""Budget cycle end date (YYYY-MM-DD)""
+                                    }
+                                },
+                                ""required"": [""category_id"", ""amount"", ""start_date"", ""end_date""]
+                            }
                         }
                     },
-                    ""required"": [""category_id"", ""amount"", ""start_date"", ""end_date""]
+                    ""required"": [""budgets""]
                 }";
+
 
                 string jsonSchemaSetGoal = @"
                 {
@@ -218,7 +230,7 @@ namespace SpendWise.Services
                 var createBudgetTool = ChatTool.CreateFunctionTool(
                     "create_budget",
                     "Creates a new budget for a specific category.",
-                    BinaryData.FromString(jsonSchemaCreateBudget)
+                    BinaryData.FromString(jsonSchemaCreateBudgets)
                 );
 
                 var setGoalTool = ChatTool.CreateFunctionTool(
@@ -294,61 +306,75 @@ namespace SpendWise.Services
         {
             var categories = await _categoryService.GetAllCategorysAsync();
             var categoriesString = string.Join(", ", categories);
-
             var currentDate = DateTime.Now.ToString("yyyy-MM-dd dddd");
-            var baseMessage = $@"Current Date: {currentDate}
-                Financial Management Guidelines:
-                1. Always convert amounts to user's currency ({user?.Currency ?? "USD"})
-                2. Validate expense dates against recurring payments
-                3. Check budget limits before confirming expenses, if budgets are not set leave it , dont ask the user to set it
-                4. Suggest realistic savings goals based on income
-                5. Available Categories: {categoriesString}
 
-                ## Core Financial Rules
-                1. **Budget Allocation**:
-                   - Essential Expenses: Max 50% of salary
-                   - Savings: Minimum 20% of salary
-                   - Discretionary: Remaining 30%
+            var baseMessage = $@"**Current Date:** {currentDate}
 
-                2. **Expense Validation**:
-                   - Reject expenses exceeding category budgets
-                   - Flag duplicates (similar amount/merchant within 24h)
-                   - Convert foreign currencies to {user?.Currency ?? "USD"}
+            Follow these essential guidelines:
+            1. **Understand User Intent:** Match the user's request with the appropriate tool and ask clarifying questions if required.
+            2. **Validate Parameters:** Ensure all required parameters are provided. Do not invoke tools with placeholders or null values.
+            4. **Handle Edge Cases:** Address ambiguous or incomplete details by reprompting for clarity. Prioritize the most recent user intent if topics shift.
+            5. **Schema Adherence:** Follow the schema requirements strictly for each tool.
 
-                3. **Goal Management**:
-                   - Suggest achievable timelines: TargetAmount / (Salary * 0.2)
-                   - Warn when new expenses jeopardize goal progress
+            **Financial Management Guidelines:**
+            - *Convert all amounts to user's currency* ({user?.Currency ?? "USD"}).
+            - *Validate expense dates against recurring payments.*
+            - *Check budget limits before confirming expenses* (if not set, do not prompt user to set it).
+            - *Suggest realistic savings goals based on income.*
+            - *Available Categories:* {categoriesString}.
 
-                ## Function Call Guidelines
-                1. **Mandatory Invocations**:
-                   - Use create_user_profile if ANY profile data missing
-                   - Invoke categorize_expense when category not specified
+            ## **Core Financial Rules**
+            - **Budget Allocation:**
+              - *Essential Expenses:* **Max 50%** of salary.
+              - *Savings:* **Minimum 20%** of salary.
+              - *Discretionary:* **Remaining 30%**.
 
-                2. **Validation Requirements**:
-                   - Verify date formats (YYYY-MM-DD)
-                   - Confirm category_id exists before logging expenses
-                   - Check budget remaining before confirming expenses
+            - **Expense Validation:**
+              - Reject expenses exceeding category budgets.
+              - Flag duplicates (*similar amount/merchant within 24h*).
+              - Convert foreign currencies to **{user?.Currency ?? "USD"}**.
 
-                3. **Error Handling**:
-                   - Return structured errors for invalid inputs
-                   - Suggest alternatives for budget overflows
+            - **Goal Management:**
+              - Suggest achievable timelines: *TargetAmount / (Salary * 0.2)*.
+              - Warn when new expenses jeopardize goal progress.
 
-                ## Response Formatting
-                1. **User-Facing Messages**:
-                   - Always include currency symbols
-                   - Use relative dates (""3 days ago"" not ""2024-03-15"")
-                   - Add progress emojis: ✅ for success, ⚠️ for warnings
+            ## **Function Call Guidelines**
+            - **Mandatory Invocations:**
+              - *Use *`create_user_profile`* if ANY profile data is missing.*
+              - *Invoke *`categorize_expense`* when category is not specified.*
 
-                3. **Tone & Style**:
-                   - Empathetic financial guidance
-                   - Positive reinforcement for good habits
-                   - Non-judgmental alerts for overspending";
+            - **Validation Requirements:**
+              - *Verify date formats (YYYY-MM-DD).*
+              - *Confirm *`category_id`* exists before logging expenses.*
+              - *Check budget remaining before confirming expenses.*
+
+            - **Error Handling:**
+              - *Return structured errors for invalid inputs.*
+              - *Suggest alternatives for budget overflows.*
+
+            ## **Response Formatting**
+            - **User-Facing Messages:**
+              - *Always include currency symbols.*
+              - *Use relative dates (""3 days ago"" not ""2024-03-15"").*
+              - Add progress indicators: *Success markers, warning indicators.*
+
+            - **Tone & Style:**
+              - *Empathetic financial guidance.*
+              - *Positive reinforcement for good habits.*
+              - *Non-judgmental alerts for overspending.*
+
+            - **Visual Formatting:**
+              - *Use **bold** for emphasis.*
+              - *Use *italics* for hints.*
+              - *Use clear indicators for better engagement.*";
 
             if (user == null)
                 return baseMessage + "\nUSER PROFILE MISSING - COLLECT USING create_user_profile FUNCTION";
 
             var userBudgets = await _budgetService.GetBudgetsAsStringAsync(user.UserId);
             var userGoals = await _goalService.GetActiveGoalsAsStringAsync(user.UserId);
+            var totalExpenses = await _expenseService.GetTotalAmountByCategoryForCurrentMonthAsync(user.UserId);
+            var recurringExpenses = await _expenseService.GetRecurringExpensesAsStringAsync(user.UserId);
 
             return $@"{baseMessage}
                 User Profile:
@@ -356,7 +382,9 @@ namespace SpendWise.Services
                 - Location: {user.LocationType ?? "Not set"}
                 - Currency: {user.Currency}
                 - Budgets: {userBudgets}
-                -Active user goals: {userGoals}";
+                - Active user goals: {userGoals}
+                - Total monthly expenses by category: {totalExpenses}
+                - Recurring expenses: {recurringExpenses}";
         }
 
         public async Task<string> HandleUserQuery(string userquery, string sysMessage)
