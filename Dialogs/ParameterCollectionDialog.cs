@@ -127,120 +127,148 @@ namespace SpendWise.Dialogs
         // Update the GenerateExpenseSummaryCard method to accept List<Expense>
         private string GenerateExpenseSummaryCard(List<Expense> summaryItems)
         {
-            return $@"
+            bool showDate = summaryItems.Select(e => e.ExpenseDate).Distinct().Count() > 1;
+            bool showCategory = summaryItems.Select(e => e.Category.Name).Distinct().Count() > 1;
+            decimal totalAmount = summaryItems.Sum(e => e.Amount);
+
+            var columns = new List<string>
+    {
+        @"{
+            ""type"": ""Column"",
+            ""width"": ""stretch"",
+            ""items"": [
+                {
+                    ""type"": ""TextBlock"",
+                    ""text"": ""Description"",
+                    ""weight"": ""Bolder""
+                }
+            ]
+        }",
+        @"{
+            ""type"": ""Column"",
+            ""width"": ""stretch"",
+            ""items"": [
+                {
+                    ""type"": ""TextBlock"",
+                    ""text"": ""Amount"",
+                    ""weight"": ""Bolder""
+                }
+            ]
+        }"
+    };
+
+            if (showDate)
+            {
+                columns.Add(@"{
+            ""type"": ""Column"",
+            ""width"": ""stretch"",
+            ""items"": [
+                {
+                    ""type"": ""TextBlock"",
+                    ""text"": ""Date"",
+                    ""weight"": ""Bolder""
+                }
+            ]
+        }");
+            }
+
+            if (showCategory)
+            {
+                columns.Add(@"{
+            ""type"": ""Column"",
+            ""width"": ""stretch"",
+            ""items"": [
+                {
+                    ""type"": ""TextBlock"",
+                    ""text"": ""Category"",
+                    ""weight"": ""Bolder""
+                }
+            ]
+        }");
+            }
+
+            var columnSets = summaryItems.Select(item => $@"
+    {{
+        ""type"": ""ColumnSet"",
+        ""columns"": [
             {{
-                ""$schema"": ""http://adaptivecards.io/schemas/adaptive-card.json"",
-                ""type"": ""AdaptiveCard"",
-                ""version"": ""1.3"",
-                ""body"": [
+                ""type"": ""Column"",
+                ""width"": ""stretch"",
+                ""items"": [
                     {{
                         ""type"": ""TextBlock"",
-                        ""text"": ""Expense Summary"",
-                        ""weight"": ""Bolder"",
-                        ""size"": ""Medium""
-                    }},
-                    {{
-                        ""type"": ""ColumnSet"",
-                        ""columns"": [
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""Description"",
-                                        ""weight"": ""Bolder""
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""Amount"",
-                                        ""weight"": ""Bolder""
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""Date"",
-                                        ""weight"": ""Bolder""
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""Category"",
-                                        ""weight"": ""Bolder""
-                                    }}
-                                ]
-                            }}
-                        ]
-                    }},
-                    {string.Join(",", summaryItems.Select(item => $@"
-                    {{
-                        ""type"": ""ColumnSet"",
-                        ""columns"": [
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""{item.Description}"",
-                                        ""wrap"": true
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""₹{item.Amount}"",
-                                        ""wrap"": true
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""{item.ExpenseDate:MM/dd/yyyy}"",
-                                        ""wrap"": true
-                                    }}
-                                ]
-                            }},
-                            {{
-                                ""type"": ""Column"",
-                                ""width"": ""stretch"",
-                                ""items"": [
-                                    {{
-                                        ""type"": ""TextBlock"",
-                                        ""text"": ""{item.Category.Name}"",
-                                        ""wrap"": true
-                                    }}
-                                ]
-                            }}
-                        ]
-                    }}"))}
+                        ""text"": ""{item.Description}"",
+                        ""wrap"": true
+                    }}
                 ]
-            }}";
+            }},
+            {{
+                ""type"": ""Column"",
+                ""width"": ""stretch"",
+                ""items"": [
+                    {{
+                        ""type"": ""TextBlock"",
+                        ""text"": ""₹{item.Amount}"",
+                        ""wrap"": true
+                    }}
+                ]
+            }}
+            {(showDate ? $@",
+            {{
+                ""type"": ""Column"",
+                ""width"": ""stretch"",
+                ""items"": [
+                    {{
+                        ""type"": ""TextBlock"",
+                        ""text"": ""{item.ExpenseDate:MM/dd/yyyy}"",
+                        ""wrap"": true
+                    }}
+                ]
+            }}" : string.Empty)}
+            {(showCategory ? $@",
+            {{
+                ""type"": ""Column"",
+                ""width"": ""stretch"",
+                ""items"": [
+                    {{
+                        ""type"": ""TextBlock"",
+                        ""text"": ""{item.Category.Name}"",
+                        ""wrap"": true
+                    }}
+                ]
+            }}" : string.Empty)}
+        ]
+    }}").ToList();
+
+            return $@"
+    {{
+        ""$schema"": ""http://adaptivecards.io/schemas/adaptive-card.json"",
+        ""type"": ""AdaptiveCard"",
+        ""version"": ""1.3"",
+        ""body"": [
+            {{
+                ""type"": ""TextBlock"",
+                ""text"": ""Expense Summary"",
+                ""weight"": ""Bolder"",
+                ""size"": ""Medium""
+            }},
+            {{
+                ""type"": ""ColumnSet"",
+                ""columns"": [
+                    {string.Join(",", columns)}
+                ]
+            }},
+            {string.Join(",", columnSets)},
+            {{
+                ""type"": ""TextBlock"",
+                ""text"": ""Total Amount: ₹{totalAmount}"",
+                ""weight"": ""Bolder"",
+                ""size"": ""Medium""
+            }}
+        ]
+    }}";
         }
+
 
 
 

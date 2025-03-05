@@ -310,6 +310,15 @@ namespace SpendWise.Services
 
             var baseMessage = $@"**Current Date:** {currentDate}
 
+            Follow these essential guidelines:
+            1. *Understand User Intent:* Match the user's request with the appropriate tool and ask clarifying questions if required.
+            2. *Validate Parameters:* Ensure all required parameters are provided. Do not invoke tools with placeholders or null values.
+            4. *Handle Edge Cases:* Address ambiguous or incomplete details by reprompting for clarity. Prioritize the most recent user intent if topics shift.
+            5. *Schema Adherence:* Follow the schema requirements strictly for each tool.
+
+            when expense of today or particular date or date range is asked invoke getExpenseSummaryTool,if the date is single day like today , put start date end date same
+
+
             ## **General Rules**
             - Keep responses **short and to the point**.
             - Ask for clarification **only when necessary**.
@@ -406,9 +415,9 @@ namespace SpendWise.Services
                 - Currency: {user.Currency}
                 - Budgets: {userBudgets}
                 - Active user goals: {userGoals}
-                - Total expenses by category: {totalExpensesCatString}
+                - Total expenses by category of this month(till date): {totalExpensesCatString}
                 - Recurring expenses: {recurringExpenses}
-                - Total expenses till date: {totalExpense}
+                - Total expenses of this month(till date): {totalExpense}
                 - Salary Balanace: {salaryBalance}";
         }
 
