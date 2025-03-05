@@ -39,7 +39,7 @@
             "type": "Action.Submit",
             "title": "Set Budget",
             "data": {
-              "action": "set_budget"
+              "action": "Allocate_budgets_for_all_the_categories"
             }
           },
           {

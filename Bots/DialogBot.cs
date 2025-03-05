@@ -1,13 +1,12 @@
-﻿// SpendWise/Bots/DialogBot.cs
-using Microsoft.Bot.Builder;
+﻿using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
-using Microsoft.Bot.Builder.Teams;
 using Microsoft.Bot.Schema;
-using Microsoft.Bot.Schema.Teams;
 using Microsoft.Extensions.Logging;
 using SpendWise.Services;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CognitiveServices.Speech;
+using Microsoft.Extensions.Configuration;
 
 namespace SpendWise.Bots
 {
@@ -18,26 +17,27 @@ namespace SpendWise.Bots
         protected readonly BotState UserState;
         protected readonly ILogger Logger;
         private readonly IUserDataService _userDataService;
+        private readonly IConfiguration _configuration;
 
         public DialogBot(
             ConversationState conversationState,
             UserState userState,
             T dialog,
             ILogger<DialogBot<T>> logger,
-            IUserDataService userDataService)
+            IUserDataService userDataService,
+            IConfiguration configuration)
         {
             ConversationState = conversationState;
             UserState = userState;
             Dialog = dialog;
             Logger = logger;
             _userDataService = userDataService;
+            _configuration = configuration;
         }
 
         public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
         {
             await base.OnTurnAsync(turnContext, cancellationToken);
-
-            // Save state changes
             await ConversationState.SaveChangesAsync(turnContext, false, cancellationToken);
             await UserState.SaveChangesAsync(turnContext, false, cancellationToken);
         }
@@ -46,25 +46,36 @@ namespace SpendWise.Bots
         {
             Logger.LogInformation("Processing message activity");
 
-            // Dummy user info for testing
-            var userId = "dummy-user-id";
-            var userName = "Dummy User";
-            var userEmail = "dummy.user@example.com";
+            if (turnContext.Activity.Speak != null)
+            {
+                string recognizedText = await RecognizeSpeechAsync();
+                turnContext.Activity.Text = recognizedText;
+            }
 
-            // Ensure user exists in database
+            var userId = "tommy@gmail.com";
+            var userName = "Tommy John";
+            var userEmail = "tommy@gmail.com";
+
             await _userDataService.EnsureUserExistsAsync(userId, userName, userEmail);
-
-            // Store user context in turn state
             turnContext.TurnState.Add("UserId", userId);
             turnContext.TurnState.Add("UserName", userName);
             turnContext.TurnState.Add("UserEmail", userEmail);
 
-            // Run dialog
             Logger.LogInformation("Starting dialog");
             await Dialog.RunAsync(
                 turnContext,
                 ConversationState.CreateProperty<DialogState>("DialogState"),
                 cancellationToken);
+        }
+
+        private async Task<string> RecognizeSpeechAsync()
+        {
+            string speechKey = _configuration["AzureSpeech:Key"];
+            string speechRegion = _configuration["AzureSpeech:Region"];
+            var config = SpeechConfig.FromSubscription(speechKey, speechRegion);
+            using var recognizer = new SpeechRecognizer(config);
+            var result = await recognizer.RecognizeOnceAsync();
+            return result.Text;
         }
     }
 }

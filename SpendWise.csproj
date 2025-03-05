@@ -30,6 +30,7 @@
     <PackageReference Include="Microsoft.Bot.Builder.AI.Luis" Version="4.22.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.22.0" />
     <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.22.0" />
+    <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.42.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.0-preview2.24304.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational.Design" Version="2.0.0-preview1-final" />
